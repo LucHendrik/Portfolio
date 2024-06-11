@@ -1,0 +1,43 @@
+import os
+from random import randint
+
+# Specify the paths for input Fasta file, intermediate Fastq, and output folder
+input_fasta_path = '/users/Luc/Downloads/snpEff/SOS1.Fasta'
+intermediate_fastq_path = '/users/Luc/Downloads/snpEff/intermediate.fastq'
+output_folder = '/users/Luc/Downloads/snpEff/mutated_fastq'
+
+# Create the output folder if it doesn't exist
+os.makedirs(output_folder, exist_ok=True)
+
+# Transform the input Fasta to intermediate Fastq using the provided terminal command
+os.system(f"cat {input_fasta_path} | paste - - | perl -ne 'chomp; s/^>/@/; @v = split /\\t/; printf(\"%s\\n%s\\n+\\n%s\\n\", $v[0], $v[1], \"B\"x length($v[1]))' > {intermediate_fastq_path}")
+
+# Read the intermediate Fastq file
+with open(intermediate_fastq_path, 'r') as intermediate_fastq:
+    lines = intermediate_fastq.readlines()
+
+# Iterate through each line of the intermediate Fastq file
+for i in range(0, len(lines), 4):
+    header = lines[i].strip()
+    sequence = lines[i+1].strip()
+    quality = lines[i+3].strip()
+
+    mutation_sites = [idx for idx, base in enumerate(sequence) if base in ['C', 'G']]
+    
+    for mut_pos in mutation_sites:
+        # Determine the mutant base (CG to AT transition)
+        mutant_base = 'T' if sequence[mut_pos] == 'C' else 'A'
+        
+        # Create a new Fastq file name
+        output_fastq_path = os.path.join(output_folder, f"mut_{mut_pos}.fastq")
+        
+        # Write the mutated sequence to the output Fastq file
+        with open(output_fastq_path, 'w') as output_fastq:
+            output_fastq.write(f"{header}_mut_{mut_pos}\n")
+            output_fastq.write(f"{sequence[:mut_pos]}{mutant_base}{sequence[mut_pos+1:]}\n")
+            output_fastq.write(f"+\n")
+            output_fastq.write(f"{quality}\n")
+        
+        print(f"Created: {output_fastq_path}")
+
+print("Done!")

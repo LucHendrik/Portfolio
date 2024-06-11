@@ -1,0 +1,93 @@
+import os
+
+# Path to the directory containing CSV files
+csv_dir = "/users/luc/Downloads/snpEff/mut_snpEffoutput"
+
+# Path to the output text file for mutations with "HIGH" or "MODERATE" effects
+output_text_file = "HK1_SNP_effects_results.txt"
+
+# List of terms to search for
+search_terms = [
+    "EXON",
+    "EXON_DELETED",
+    "NON_SYNONYMOUS_CODING",
+    "SYNONYMOUS_CODING",
+    "FRAME_SHIFT",
+    "CODON_CHANGE",
+    "CODON_INSERTION",
+    "CODON_CHANGE_PLUS_CODON_INSERTION",
+    "CODON_DELETION",
+    "CODON_CHANGE_PLUS_CODON_DELETION",
+    "STOP_GAINED",
+    "SYNONYMOUS_STOP",
+    "SPLICE_SITE_ACCEPTOR",
+    "START_LOST",
+    "SPLICE_SITE_DONOR",
+    "STOP_LOST",
+    "RARE_AMINO_ACID"
+]
+
+# Create a dictionary to store mutation positions and the found terms for both HIGH and MODERATE
+high_moderate_effects = {
+    "HIGH": {},
+    "MODERATE": {}
+}
+
+# Iterate through each CSV file in the directory
+for csv_file_name in os.listdir(csv_dir):
+    if csv_file_name.startswith("mut_") and csv_file_name.endswith(".fastq_summary.csv"):
+        csv_file_path = os.path.join(csv_dir, csv_file_name)
+        mutation_position = csv_file_name.split("_")[1]  # Extract mutation position
+
+        # Read the CSV file
+        with open(csv_file_path, "r", newline="") as csv_file:
+            csv_lines = csv_file.read()
+            
+            # Check if HIGH or MODERATE is present in the CSV content
+            if "HIGH" in csv_lines:
+                effect_type = "HIGH"
+            elif "MODERATE" in csv_lines:
+                effect_type = "MODERATE"
+            else:
+                continue  # Skip files without HIGH or MODERATE
+            
+            # Check for the presence of other search terms
+            found_terms = [term for term in search_terms if term in csv_lines]
+            high_moderate_effects[effect_type][mutation_position] = found_terms
+
+# Write the results to the output text file
+with open(output_text_file, "w") as txt_file:
+    for effect_type, effect_data in high_moderate_effects.items():
+        txt_file.write(f"{effect_type} EFFECTS:\n")
+        for mutant, terms in effect_data.items():
+            txt_file.write(f"Mutation Position: {mutant}, Found Terms: {', '.join(terms)}\n")
+        txt_file.write("\n")
+
+    # Count the total occurrences of HIGH and MODERATE effects
+    total_high_occurrences = len(high_moderate_effects["HIGH"])
+    total_moderate_occurrences = len(high_moderate_effects["MODERATE"])
+    
+    txt_file.write(f"Total HIGH Occurrences: {total_high_occurrences}\n")
+    txt_file.write(f"Total MODERATE Occurrences: {total_moderate_occurrences}\n")
+    
+    # Count combinations of HIGH with certain search terms
+    combinations_high = {
+        term: sum(1 for mutant_terms in high_moderate_effects["HIGH"].values() if term in mutant_terms)
+        for term in search_terms
+    }
+    
+    txt_file.write("\nCombinations with HIGH:\n")
+    for term, count in combinations_high.items():
+        txt_file.write(f"Combination: HIGH + {term}, Count: {count}\n")
+    
+    # Count combinations of MODERATE with certain search terms
+    combinations_moderate = {
+        term: sum(1 for mutant_terms in high_moderate_effects["MODERATE"].values() if term in mutant_terms)
+        for term in search_terms
+    }
+    
+    txt_file.write("\nCombinations with MODERATE:\n")
+    for term, count in combinations_moderate.items():
+        txt_file.write(f"Combination: MODERATE + {term}, Count: {count}\n")
+
+print("HIGH and MODERATE effects analysis written to the output text file.")

@@ -1,0 +1,55 @@
+import os
+
+# Path to the reference genome FASTA file
+reference_genome = "/users/Luc/Downloads/snpEff/sequences.fa"
+
+# Path to the directory containing FASTQ files
+input_fastq_dir = "/users/Luc/Downloads/snpEff/mutated_fastq"
+
+# Genome version
+genome_version = "Quinoa_database"
+
+# Navigate to the snpEff directory
+os.chdir("/users/Luc/Downloads/snpEff")
+
+# Create subdirectories if they don't exist
+os.makedirs("mut_snpEffoutput", exist_ok=True)
+os.makedirs("mut_intermediateresults", exist_ok=True)
+
+# Initialize a dictionary to store mutation positions and their summary output filenames
+snpEffoutput = {}
+
+# Iterate over each FASTQ file in the input_fastq_dir directory
+for fastq_file in os.listdir(input_fastq_dir):
+    if fastq_file.startswith("mut_") and fastq_file.endswith(".fastq"):
+        # Extract mutation position from the file name
+        mutation_position = fastq_file.split("_")[1]
+
+        # Perform the sequence of commands for each FASTQ file
+        os.system(f"bwa mem {reference_genome} {os.path.join(input_fastq_dir, fastq_file)} > mut_{mutation_position}_aligned.sam")
+        os.system(f"samtools sort -o mut_{mutation_position}_aligned.sorted.bam mut_{mutation_position}_aligned.sam")
+        os.system(f"samtools index mut_{mutation_position}_aligned.sorted.bam")
+        os.system(f"bcftools mpileup -Ou -f {reference_genome} mut_{mutation_position}_aligned.sorted.bam > mut_{mutation_position}_pileup.bcf")
+        os.system(f"bcftools call -c -Ov -o mut_{mutation_position}_variants.vcf mut_{mutation_position}_pileup.bcf")
+        os.system(f"java -jar snpEff.jar -classic -csvStats mut_{mutation_position}_summary.csv {genome_version} mut_{mutation_position}_variants.vcf")
+
+        # Move summary.csv to the mut_snpEffoutput directory
+        os.rename(f"mut_{mutation_position}_summary.csv", f"mut_snpEffoutput/mut_{mutation_position}_summary.csv")
+
+        # Move other intermediate files, including genes.txt, to the mut_intermediateresults directory
+        os.rename(f"mut_{mutation_position}_aligned.sam", f"mut_intermediateresults/mut_{mutation_position}_aligned.sam")
+        os.rename(f"mut_{mutation_position}_aligned.sorted.bam", f"mut_intermediateresults/mut_{mutation_position}_aligned.sorted.bam")
+        os.rename(f"mut_{mutation_position}_aligned.sorted.bam.bai", f"mut_intermediateresults/mut_{mutation_position}_aligned.sorted.bam.bai")
+        os.rename(f"mut_{mutation_position}_pileup.bcf", f"mut_intermediateresults/mut_{mutation_position}_pileup.bcf")
+        os.rename(f"mut_{mutation_position}_variants.vcf", f"mut_intermediateresults/mut_{mutation_position}_variants.vcf")
+        genes_txt_file = f"mut_{mutation_position}.fastq_summary.genes.txt"
+        if os.path.exists(genes_txt_file):
+            os.rename(genes_txt_file, f"mut_intermediateresults/{genes_txt_file}")
+
+        # Store the mutation position and summary output filename in the snpEffoutput dictionary
+        snpEffoutput[mutation_position] = f"mut_snpEffoutput/mut_{mutation_position}_summary.csv"
+
+# Print the collected mutation positions and their associated summary output filenames
+print("Mutation Positions and Summary Output Files:")
+for mutation_position, summary_filename in snpEffoutput.items():
+    print(f"Mutation Position: {mutation_position}, Summary Output: {summary_filename}")
