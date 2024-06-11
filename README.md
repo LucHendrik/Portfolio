@@ -1,6 +1,6 @@
 Quinoa Drought Tolerance Analysis (M.Sc. Thesis, Wageningen University)
 
-This code snippet implements a reverse genetics approach to predict potential mutations in quinoa DNA that could lead to detrimental changes in protein structure. It iterates through single nucleotide polymorphisms (SNPs) and analyzes their impact on protein structure during a drought tolerance study.
+This Python code snippet implements a reverse genetics approach to predict potential mutations in quinoa DNA that could lead to detrimental changes in protein structure. It iterates through single nucleotide polymorphisms (SNPs) and analyzes their impact on protein structure during a drought tolerance study.
 
 Functionality:
 Iterates through SNPs: The code iterates through potential single nucleotide changes in the DNA sequence.
